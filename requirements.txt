@@ -1,5 +1,6 @@
+flask
 telebot
-sqlite3
 requests
 razorpay
-flask
+sqlite3
+gunicorn
