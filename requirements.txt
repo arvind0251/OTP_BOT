@@ -1,5 +1,5 @@
-pyTelegramBotAPI
-requests
-flask
+telebot
 sqlite3
-gunicorn
+requests
+razorpay
+flask
