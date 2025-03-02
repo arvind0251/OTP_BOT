@@ -1,20 +1,24 @@
 import telebot
 import sqlite3
 import requests
-import random
+import razorpay
 
 # API Configuration
-BOT_TOKEN = "7696672342:AAF21vyG4xgl9VdRgY-J_zFqvXG222ufEOE"
-ADMIN_ID = "7408008545"
-FIVESIM_API_KEY = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzI0MjU0NDEsImlhdCI6MTc0MDg4OTQ0MSwicmF5IjoiMDE3MTcyNmMzNzFhNTI0ZGY1NTNjZmZmMWM5NzJkZWMiLCJzdWIiOjMwNjU0NDZ9.B5kVFdXAs0O25ibyP-tufwXTSglcC3mRvdbbJrEmat6pGQaKyCTFSs9rePR2Nd7yvB3gZhHfp-YUUN3IQz3LOyFyIK8bogouWi_vplB9HxIowecu0Vdet520Etn4ABrTOfHMGMoQAG3VA48ufBd9dfWIKrjbrn33UpEHJHzzuiMyAv0ZHKpuLI_dE-Rm5umLChxmRPz-O10l84kh1inty48iJKW9xtH2oHpINatCqdp-TqWhQIWa1zmtkn-08znqdD4cZgZgmWd79FpRHXN82hk6TWVTCh9UXDxX-jc0d8kwTCJcmmGrKbV0UIauOEeZR6HpBQVj052cBYLzb9j9Vg"
-BHARATPE_MERCHANT_ID = "YOUR_MERCHANT_ID"
-BHARATPE_SECRET_KEY = "YOUR_SECRET_KEY"
+BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+ADMIN_ID = "YOUR_ADMIN_ID"
+FIVESIM_API_KEY = "YOUR_5SIM_API_KEY"
+RAZORPAY_KEY_ID = "YOUR_RAZORPAY_KEY_ID"
+RAZORPAY_KEY_SECRET = "YOUR_RAZORPAY_KEY_SECRET"
 
 bot = telebot.TeleBot(BOT_TOKEN)
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 # Database Connection
 def db_connect():
     conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (telegram_id INTEGER PRIMARY KEY, balance REAL)")
+    conn.commit()
     return conn
 
 # Start Command
@@ -88,12 +92,25 @@ def get_otp(message):
     else:
         bot.send_message(user_id, "⏳ No OTP received yet! Try again after 1 min.")
 
-# Add Funds Command
+# Add Funds via Razorpay
 @bot.message_handler(commands=['add_funds'])
 def add_funds(message):
     user_id = message.chat.id
-    payment_url = f"http://yourdomain.com/generate_qr?user_id={user_id}&amount=10"
-    bot.send_message(user_id, f"🔗 Pay via BharatPe:\n{payment_url}")
+    amount = 1000  # ₹10 (Razorpay needs amount in paise)
+
+    # Create Razorpay Order
+    order_data = {
+        "amount": amount,
+        "currency": "INR",
+        "receipt": f"order_{user_id}",
+        "payment_capture": 1
+    }
+    order = razorpay_client.order.create(data=order_data)
+    order_id = order['id']
+
+    # Payment Link
+    payment_url = f"https://rzp.io/l/{order_id}"
+    bot.send_message(user_id, f"🔗 Pay via Razorpay:\n{payment_url}\nAfter payment, your balance will be updated.")
 
 # Admin Panel Command
 @bot.message_handler(commands=['admin'])
